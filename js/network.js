@@ -5,6 +5,36 @@
 (function (global) {
   'use strict';
 
+  // STUN/TURN 服务器配置（用于 NAT 穿透）
+  var ICE_SERVERS = {
+    iceServers: [
+      // STUN servers (用于 NAT 发现)
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:stun1.l.google.com:19302' },
+      { urls: 'stun:stun2.l.google.com:19302' },
+      { urls: 'stun:stun.cloudflare.com:3478' },
+      // TURN servers (用于 NAT 中继，穿透失败时走服务器转发)
+      // OpenRelay 提供的免费 TURN 服务
+      {
+        urls: 'turn:openrelay.metered.ca:80',
+        username: 'openrelayproject',
+        credential: 'openrelayproject'
+      },
+      {
+        urls: 'turn:openrelay.metered.ca:443',
+        username: 'openrelayproject',
+        credential: 'openrelayproject'
+      },
+      {
+        urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+        username: 'openrelayproject',
+        credential: 'openrelayproject'
+      }
+    ],
+    iceTransportPolicy: 'all',
+    sdpSemantics: 'unified-plan'
+  };
+
   var MSG_TYPES = {
     // 客人 → 房主
     JOIN: 'join',
@@ -67,7 +97,10 @@
     if (window.dbg) dbg('[Network] Creating Peer:', fullId);
 
     try {
-      this.peer = new Peer(fullId, { debug: 2 });
+      this.peer = new Peer(fullId, {
+        debug: 2,
+        config: ICE_SERVERS
+      });
     } catch (e) {
       if (window.dbg) dbg('[Network] Peer constructor threw:', e.message);
       if (self.onError) self.onError(e);
@@ -128,13 +161,22 @@
     var self = this;
     this.role = 'guest';
 
-    this.peer = new Peer(undefined, { debug: 1 });
+    if (window.dbg) dbg('[Network] join() called, room:', roomId);
 
-    this.peer.on('open', function () {
+    this.peer = new Peer(undefined, {
+      debug: 2,
+      config: ICE_SERVERS
+    });
+
+    this.peer.on('open', function (myId) {
+      if (window.dbg) dbg('[Network] guest peer open, my id:', myId);
       var targetId = 'gridgame-' + roomId;
+      if (window.dbg) dbg('[Network] connecting to host:', targetId);
+
       var conn = self.peer.connect(targetId, { reliable: true });
 
       conn.on('open', function () {
+        if (window.dbg) dbg('[Network] data connection opened to host');
         self.hostConn = conn;
         conn.send({ type: MSG_TYPES.JOIN, name: playerName });
         if (self.onGuestOpen) self.onGuestOpen();
@@ -145,22 +187,41 @@
       });
 
       conn.on('close', function () {
+        if (window.dbg) dbg('[Network] data connection closed');
         self.hostConn = null;
         if (self.onGuestClose) self.onGuestClose();
       });
 
-      conn.on('error', function () {
+      conn.on('error', function (err) {
+        if (window.dbg) dbg('[Network] data connection error:', err.message || err.type || err);
         self.hostConn = null;
-        if (self.onError) self.onError(new Error('Connection error'));
+        var msg = '连接房主失败';
+        if (err && err.type === 'peer-unavailable') {
+          msg = '找不到该房间，请检查房间号';
+        } else if (err && err.type === 'network') {
+          msg = '网络错误，可能 NAT 穿透失败。请尝试切换网络（如改用 WiFi）';
+        } else if (err && err.type === 'server-error') {
+          msg = '信令服务器错误，请稍后重试';
+        }
+        if (self.onError) self.onError(new Error(msg));
       });
     });
 
     this.peer.on('error', function (err) {
+      if (window.dbg) dbg('[Network] guest peer error:', err.type, err.message || err);
       if (err.type === 'peer-unavailable') {
         if (self.onError) self.onError(new Error('找不到该房间，请检查房间号'));
+      } else if (err.type === 'network' || err.type === 'server-error' || err.type === 'socket-error') {
+        if (self.onError) self.onError(new Error('无法连接信令服务器，请检查网络'));
+      } else if (err.type === 'webcrypto') {
+        if (self.onError) self.onError(new Error('浏览器不支持所需加密功能'));
       } else {
         if (self.onError) self.onError(err);
       }
+    });
+
+    this.peer.on('disconnected', function () {
+      if (window.dbg) dbg('[Network] guest disconnected from signaling server');
     });
   };
 

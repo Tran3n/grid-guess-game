@@ -18,7 +18,7 @@
   };
 
   // 在脚本加载时立即打印（验证代码已更新）
-  dbg('app.js loaded, version: v10-cycling');
+  dbg('app.js loaded, version: v11-nat');
 
   var hostCtrl = null;
   var guestCtrl = null;
