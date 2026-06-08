@@ -88,6 +88,13 @@
   // 创建房间
   $('#btn-create-room').addEventListener('click', function () {
     var btn = this;
+
+    // 检查 PeerJS 是否已加载
+    if (typeof Peer === 'undefined') {
+      alert('PeerJS 库未加载，无法创建房间。\n请检查网络连接后刷新页面重试。');
+      return;
+    }
+
     btn.disabled = true;
     btn.textContent = '正在连接信令服务器...';
 
