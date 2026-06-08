@@ -96,7 +96,12 @@
 
   HostController.prototype.getPlayerNames = function () {
     return this.players.map(function (p) {
-      return { name: p.name, connId: p.connId, score: p.score, eliminated: p.eliminated };
+      return {
+        name: p.name,
+        connId: p.connId,
+        score: p.score,
+        wrongCount: p.wrongCount || 0
+      };
     });
   };
 
@@ -118,9 +123,10 @@
     var self = this;
     var totalCells = gridSize * gridSize;
 
-    // 重置玩家淘汰状态
+    // 重置玩家状态
     for (var i = 0; i < this.players.length; i++) {
       this.players[i].eliminated = false;
+      this.players[i].wrongCount = 0;
     }
 
     this.gameState = {
@@ -188,20 +194,13 @@
 
   HostController.prototype.notifyTurn = function () {
     var gs = this.gameState;
-    if (gs.currentIdx >= this.players.length) {
-      // 所有人都猜错了
-      this.endRound(null);
-      return;
-    }
+    if (!gs) return;
+    if (this.players.length === 0) return;
+
+    // 循环：currentIdx 始终在 [0, players.length) 内
+    gs.currentIdx = gs.currentIdx % this.players.length;
 
     var current = this.players[gs.currentIdx];
-
-    // 跳过已淘汰的
-    if (current.eliminated) {
-      gs.currentIdx++;
-      this.notifyTurn();
-      return;
-    }
 
     // 通知当前客人轮到他
     this.network.sendTo(current.connId, {
@@ -314,41 +313,31 @@
         type: MSG.JUDGE_RESULT,
         playerName: current.name,
         correct: true,
-        score: score
+        score: score,
+        players: this.getPlayerNames()
       });
 
       this.endRound(current);
     } else {
-      // 猜错了
-      current.eliminated = true;
+      // 猜错了 — 累计猜错次数，循环到下一个玩家
+      current.wrongCount = (current.wrongCount || 0) + 1;
 
       this.network.broadcast({
         type: MSG.JUDGE_RESULT,
         playerName: current.name,
-        correct: false
+        correct: false,
+        players: this.getPlayerNames(),
+        nextIdx: (gs.currentIdx + 1) % this.players.length
       });
 
-      // 下一个玩家
-      gs.currentIdx++;
+      // 循环到下一个玩家
+      gs.currentIdx = (gs.currentIdx + 1) % this.players.length;
       gs.phase = 'reveal';
 
       $('#host-guess-display').classList.add('hidden');
       $('#host-judge-btns').classList.add('hidden');
 
-      // 检查是否还有人可以猜
-      var hasActive = false;
-      for (var i = gs.currentIdx; i < this.players.length; i++) {
-        if (!this.players[i].eliminated) {
-          hasActive = true;
-          break;
-        }
-      }
-
-      if (!hasActive) {
-        this.endRound(null);
-      } else {
-        this.notifyTurn();
-      }
+      this.notifyTurn();
     }
   };
 

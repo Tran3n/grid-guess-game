@@ -551,8 +551,8 @@ body {
   background: #4338ca;
 }
 
-.queue-item.eliminated {
-  opacity: 0.4;
+.queue-item.wrong {
+  opacity: 0.7;
 }
 
 .queue-item .player-name {

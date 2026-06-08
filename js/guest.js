@@ -243,6 +243,11 @@
   // ========== 判定结果 ==========
 
   GuestController.prototype.onJudgeResult = function (data) {
+    // 更新玩家列表（包含猜错次数）
+    if (data.players) {
+      this.players = data.players;
+    }
+
     if (data.correct) {
       this.isMyTurn = false;
       this.showWaiting();
@@ -253,7 +258,8 @@
         $('#guest-turn-waiting .turn-hint').textContent = '猜测错误，等待下一位...';
       }
     }
-    this.updatePlayerQueue(null);
+    // 用 nextIdx 高亮下一个回答者
+    this.updatePlayerQueue(null, data.nextIdx);
   };
 
   // ========== 提交猜测 ==========
@@ -340,13 +346,19 @@
     if (elS) elS.textContent = Game.calcScore(gs.totalCells, gs.revealedCount);
   };
 
-  GuestController.prototype.updatePlayerQueue = function (myConnId) {
+  GuestController.prototype.updatePlayerQueue = function (myConnId, currentIdx) {
     if (!this.players.length) return;
-    // 找到当前回答者的 index
-    var currentIdx = -1;
-    if (this.gameState) {
-      // 通过判断谁的 turn 来确定
-      // 简化：如果 isMyTurn 则 myConnId 对应的是 current
+    // 如果是自己的回合，用 myConnId 推算
+    if (currentIdx === undefined || currentIdx === null) {
+      currentIdx = -1;
+      if (this.isMyTurn) {
+        for (var i = 0; i < this.players.length; i++) {
+          if (this.players[i].connId === this.myConnId) {
+            currentIdx = i;
+            break;
+          }
+        }
+      }
     }
     Game.renderPlayerQueue($('#player-queue'), this.players, currentIdx, myConnId || this.myConnId);
   };

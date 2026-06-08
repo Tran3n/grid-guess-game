@@ -200,8 +200,8 @@
 
       if (i === currentIdx) {
         item.classList.add('current');
-      } else if (p.eliminated) {
-        item.classList.add('eliminated');
+      } else if (p.wrongCount > 0) {
+        item.classList.add('wrong');
       }
 
       var nameSpan = document.createElement('span');
@@ -219,8 +219,8 @@
       statusSpan.className = 'player-status';
       if (i === currentIdx) {
         statusSpan.textContent = '回答中...';
-      } else if (p.eliminated) {
-        statusSpan.textContent = '已猜错';
+      } else if (p.wrongCount > 0) {
+        statusSpan.textContent = '猜错 ' + p.wrongCount + ' 次';
       } else {
         statusSpan.textContent = '等待';
       }
