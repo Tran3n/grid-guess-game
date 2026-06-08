@@ -6,6 +6,20 @@
 
   var $ = function (sel) { return document.querySelector(sel); };
 
+  // ========== 可见调试日志 ==========
+  window.dbg = function () {
+    var overlay = document.getElementById('debug-overlay');
+    if (!overlay) return;
+    overlay.style.display = 'block';
+    var msg = '[' + new Date().toLocaleTimeString() + '] ' +
+      Array.prototype.slice.call(arguments).join(' ');
+    overlay.textContent += msg + '\n';
+    console.log.apply(console, arguments);
+  };
+
+  // 在脚本加载时立即打印（验证代码已更新）
+  dbg('app.js loaded, version: v5-diag');
+
   var hostCtrl = null;
   var guestCtrl = null;
   var soloState = null;
@@ -88,53 +102,65 @@
   // 创建房间
   $('#btn-create-room').addEventListener('click', function () {
     var btn = this;
+    dbg('Create room button clicked');
 
-    // 检查 PeerJS 是否已加载
-    if (typeof Peer === 'undefined') {
-      alert('PeerJS 库未加载，无法创建房间。\n请检查网络连接后刷新页面重试。');
-      return;
-    }
+    try {
+      // 检查 PeerJS 是否已加载
+      if (typeof Peer === 'undefined') {
+        dbg('ERROR: Peer is undefined');
+        alert('PeerJS 库未加载，无法创建房间。\n请检查网络连接后刷新页面重试。');
+        return;
+      }
+      dbg('Peer is available:', typeof Peer);
 
-    btn.disabled = true;
-    btn.textContent = '正在连接信令服务器...';
+      btn.disabled = true;
+      btn.textContent = '正在连接信令服务器...';
 
-    hostCtrl = new HostController();
-    hostCtrl.init();
+      hostCtrl = new HostController();
+      dbg('HostController created');
+      hostCtrl.init();
+      dbg('hostCtrl.init() returned');
 
-    var gridSize = parseInt($('#grid-size').value, 10);
-    var answer = $('#input-answer').value.trim();
+      var gridSize = parseInt($('#grid-size').value, 10);
+      var answer = $('#input-answer').value.trim();
+      hostCtrl._imageData = hostImageData;
+      hostCtrl._gridSize = gridSize;
+      hostCtrl._answer = answer;
 
-    // 保存设置
-    hostCtrl._imageData = hostImageData;
-    hostCtrl._gridSize = gridSize;
-    hostCtrl._answer = answer;
+      // 超时提示（15秒）
+      var timeout = setTimeout(function () {
+        dbg('TIMEOUT: peer.on(open) did not fire in 15s');
+        if (!document.getElementById('page-host-lobby').classList.contains('active')) {
+          alert('连接信令服务器超时。\n\n请查看页面右上角的调试信息并截图发给我。');
+          btn.disabled = false;
+          btn.textContent = '创建房间';
+          if (hostCtrl) { hostCtrl.destroy(); hostCtrl = null; }
+        }
+      }, 15000);
 
-    // 超时提示（15秒）
-    var timeout = setTimeout(function () {
-      if (!document.getElementById('page-host-lobby').classList.contains('active')) {
-        alert('连接信令服务器超时。可能是网络问题或 PeerJS 服务不可用。\n请检查网络后重试，或打开浏览器控制台(F12)查看详细错误。');
+      var origOpen = hostCtrl.network.onHostOpen;
+      hostCtrl.network.onHostOpen = function (peerId) {
+        dbg('onHostOpen fired:', peerId);
+        clearTimeout(timeout);
         btn.disabled = false;
         btn.textContent = '创建房间';
-        if (hostCtrl) { hostCtrl.destroy(); hostCtrl = null; }
-      }
-    }, 15000);
+        origOpen(peerId);
+      };
 
-    // 覆盖 onHostOpen 以清除超时
-    var origOpen = hostCtrl.network.onHostOpen;
-    hostCtrl.network.onHostOpen = function (peerId) {
-      clearTimeout(timeout);
+      var origError = hostCtrl.network.onError;
+      hostCtrl.network.onError = function (err) {
+        dbg('onError fired:', err.message || err);
+        clearTimeout(timeout);
+        btn.disabled = false;
+        btn.textContent = '创建房间';
+        origError(err);
+      };
+    } catch (e) {
+      dbg('EXCEPTION:', e.message, e.stack);
+      alert('代码异常: ' + e.message);
       btn.disabled = false;
       btn.textContent = '创建房间';
-      origOpen(peerId);
-    };
-
-    var origError = hostCtrl.network.onError;
-    hostCtrl.network.onError = function (err) {
-      clearTimeout(timeout);
-      btn.disabled = false;
-      btn.textContent = '创建房间';
-      origError(err);
-    };
+    }
   });
 
   $('#btn-back-home-1').addEventListener('click', function () {
