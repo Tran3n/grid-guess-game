@@ -87,6 +87,10 @@
 
   // 创建房间
   $('#btn-create-room').addEventListener('click', function () {
+    var btn = this;
+    btn.disabled = true;
+    btn.textContent = '正在连接信令服务器...';
+
     hostCtrl = new HostController();
     hostCtrl.init();
 
@@ -97,6 +101,33 @@
     hostCtrl._imageData = hostImageData;
     hostCtrl._gridSize = gridSize;
     hostCtrl._answer = answer;
+
+    // 超时提示（15秒）
+    var timeout = setTimeout(function () {
+      if (!document.getElementById('page-host-lobby').classList.contains('active')) {
+        alert('连接信令服务器超时。可能是网络问题或 PeerJS 服务不可用。\n请检查网络后重试，或打开浏览器控制台(F12)查看详细错误。');
+        btn.disabled = false;
+        btn.textContent = '创建房间';
+        if (hostCtrl) { hostCtrl.destroy(); hostCtrl = null; }
+      }
+    }, 15000);
+
+    // 覆盖 onHostOpen 以清除超时
+    var origOpen = hostCtrl.network.onHostOpen;
+    hostCtrl.network.onHostOpen = function (peerId) {
+      clearTimeout(timeout);
+      btn.disabled = false;
+      btn.textContent = '创建房间';
+      origOpen(peerId);
+    };
+
+    var origError = hostCtrl.network.onError;
+    hostCtrl.network.onError = function (err) {
+      clearTimeout(timeout);
+      btn.disabled = false;
+      btn.textContent = '创建房间';
+      origError(err);
+    };
   });
 
   $('#btn-back-home-1').addEventListener('click', function () {

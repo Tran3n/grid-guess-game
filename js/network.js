@@ -55,7 +55,7 @@
     // 生成6位短ID
     var shortId = generateShortId();
     this.peer = new Peer('gridgame-' + shortId, {
-      debug: 0
+      debug: 1
     });
 
     this.peer.on('open', function (id) {
@@ -84,6 +84,7 @@
     });
 
     this.peer.on('error', function (err) {
+      console.error('[Network] host error:', err);
       if (err.type === 'unavailable-id') {
         // ID 冲突，重试
         self.destroy();
@@ -91,6 +92,10 @@
         return;
       }
       if (self.onError) self.onError(err);
+    });
+
+    this.peer.on('disconnected', function () {
+      console.warn('[Network] host disconnected from signaling server');
     });
   };
 
@@ -101,7 +106,7 @@
     var self = this;
     this.role = 'guest';
 
-    this.peer = new Peer(undefined, { debug: 0 });
+    this.peer = new Peer(undefined, { debug: 1 });
 
     this.peer.on('open', function () {
       var targetId = 'gridgame-' + roomId;
