@@ -170,10 +170,12 @@
   HostController.prototype.updateGameStats = function () {
     var gs = this.gameState;
     if (!gs) return;
-    $('#stat-revealed').textContent = gs.revealedCount;
-    $('#stat-total').textContent = gs.totalCells;
-    var score = Game.calcScore(gs.totalCells, gs.revealedCount);
-    $('#stat-score').textContent = score;
+    var elR = $('#stat-revealed');
+    var elT = $('#stat-total');
+    var elS = $('#stat-score');
+    if (elR) elR.textContent = gs.revealedCount;
+    if (elT) elT.textContent = gs.totalCells;
+    if (elS) elS.textContent = Game.calcScore(gs.totalCells, gs.revealedCount);
   };
 
   HostController.prototype.updatePlayerQueue = function () {
