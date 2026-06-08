@@ -240,34 +240,7 @@
     </div>
   </div>
 
-  <script>
-    // 加载 PeerJS 的备用 CDN（按优先级尝试）
-    (function loadPeerJS() {
-      var cdns = [
-        'https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js',
-        'https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js',
-        'https://cdn.bootcdn.net/ajax/libs/peerjs/1.5.4/peerjs.min.js'
-      ];
-      function tryLoad(idx) {
-        if (idx >= cdns.length) {
-          document.body.innerHTML = '<div style="text-align:center;padding:40px;color:#f1f5f9;font-family:sans-serif;background:#0f172a;min-height:100vh"><h2>PeerJS 加载失败</h2><p>请检查网络后刷新页面</p><p style="color:#94a3b8;font-size:0.9rem;margin-top:8px">所有 CDN 都无法访问</p></div>';
-          return;
-        }
-        var s = document.createElement('script');
-        s.src = cdns[idx];
-        s.onload = function () {
-          window.__peerjsLoaded = true;
-          window.dispatchEvent(new Event('peerjs-ready'));
-        };
-        s.onerror = function () {
-          console.warn('Failed to load PeerJS from:', cdns[idx]);
-          tryLoad(idx + 1);
-        };
-        document.head.appendChild(s);
-      }
-      tryLoad(0);
-    })();
-  </script>
+  <script src="lib/peerjs.min.js"></script>
   <script src="js/network.js"></script>
   <script src="js/game.js"></script>
   <script src="js/host.js"></script>

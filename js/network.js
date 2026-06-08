@@ -52,13 +52,27 @@
     var self = this;
     this.role = 'host';
 
+    console.log('[Network] Starting host, checking PeerJS availability...');
+    if (typeof Peer === 'undefined') {
+      console.error('[Network] Peer is undefined! PeerJS library not loaded.');
+      if (self.onError) self.onError(new Error('PeerJS 库未加载'));
+      return;
+    }
+    console.log('[Network] Peer is available:', typeof Peer);
+
     // 生成6位短ID
     var shortId = generateShortId();
-    this.peer = new Peer('gridgame-' + shortId, {
-      debug: 1
+    var fullId = 'gridgame-' + shortId;
+    console.log('[Network] Creating peer with id:', fullId);
+
+    this.peer = new Peer(fullId, {
+      debug: 2
     });
 
+    console.log('[Network] Peer created, waiting for open event...');
+
     this.peer.on('open', function (id) {
+      console.log('[Network] OPEN event fired, id:', id);
       if (self.onHostOpen) self.onHostOpen(id);
     });
 
@@ -84,7 +98,7 @@
     });
 
     this.peer.on('error', function (err) {
-      console.error('[Network] host error:', err);
+      console.error('[Network] host error:', err.type, err.message || err);
       if (err.type === 'unavailable-id') {
         // ID 冲突，重试
         self.destroy();
@@ -96,6 +110,10 @@
 
     this.peer.on('disconnected', function () {
       console.warn('[Network] host disconnected from signaling server');
+    });
+
+    this.peer.on('close', function () {
+      console.log('[Network] host peer closed');
     });
   };
 
