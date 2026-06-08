@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>翻网格猜图片 - 多人对战</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- ========== 首页：选择角色 ========== -->
+  <div id="page-home" class="page active">
+    <div class="container">
+      <h1 class="title">翻网格猜图片</h1>
+      <p class="subtitle">多人实时对战 — 翻格子，猜图片</p>
+
+      <div class="role-cards">
+        <button id="btn-be-host" class="role-card">
+          <div class="role-icon">&#9876;</div>
+          <div class="role-label">创建房间</div>
+          <div class="role-desc">你是房主，上传图片、设答案、主持游戏</div>
+        </button>
+        <button id="btn-be-guest" class="role-card">
+          <div class="role-icon">&#9737;</div>
+          <div class="role-label">加入房间</div>
+          <div class="role-desc">输入房间号，等待房主开始</div>
+        </button>
+      </div>
+
+      <button id="btn-solo" class="btn btn-secondary">单人练习</button>
+    </div>
+  </div>
+
+  <!-- ========== 房主：设置页面 ========== -->
+  <div id="page-host-setup" class="page">
+    <div class="container">
+      <h2 class="page-title">创建房间</h2>
+
+      <div class="upload-area" id="upload-area">
+        <input type="file" id="file-input" accept="image/*" hidden>
+        <div class="upload-placeholder">
+          <div class="upload-icon">+</div>
+          <p>点击上传图片</p>
+          <p class="hint">支持 JPG / PNG / GIF / WebP</p>
+        </div>
+        <img id="preview-img" class="preview-img" hidden>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">正确答案</label>
+        <input type="text" id="input-answer" class="text-input" placeholder="输入图片描述作为答案">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">网格大小：<span id="grid-size-display">4 × 4</span></label>
+        <input type="range" id="grid-size" min="2" max="10" value="4" class="slider">
+      </div>
+
+      <button id="btn-create-room" class="btn btn-primary" disabled>创建房间</button>
+      <button id="btn-back-home-1" class="btn btn-secondary">返回</button>
+    </div>
+  </div>
+
+  <!-- ========== 房主：大厅 ========== -->
+  <div id="page-host-lobby" class="page">
+    <div class="container">
+      <h2 class="page-title">房间大厅</h2>
+      <div class="room-id-display">
+        <span class="room-id-label">房间号</span>
+        <span id="room-id-text" class="room-id-value">----</span>
+      </div>
+
+      <div class="player-list-section">
+        <h3>已加入的玩家</h3>
+        <div id="host-player-list" class="player-list"></div>
+      </div>
+
+      <button id="btn-start-game" class="btn btn-primary" disabled>开始游戏</button>
+      <button id="btn-cancel-room" class="btn btn-secondary">取消房间</button>
+    </div>
+  </div>
+
+  <!-- ========== 客人：加入页面 ========== -->
+  <div id="page-guest-join" class="page">
+    <div class="container">
+      <h2 class="page-title">加入房间</h2>
+
+      <div class="form-group">
+        <label class="form-label">房间号</label>
+        <input type="text" id="input-room-id" class="text-input" placeholder="输入房主提供的房间号" maxlength="20">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">你的昵称</label>
+        <input type="text" id="input-name" class="text-input" placeholder="给自己取个名字" maxlength="12">
+      </div>
+
+      <button id="btn-join-room" class="btn btn-primary">加入</button>
+      <button id="btn-back-home-2" class="btn btn-secondary">返回</button>
+
+      <div id="join-error" class="error-msg hidden"></div>
+    </div>
+  </div>
+
+  <!-- ========== 客人：等待页面 ========== -->
+  <div id="page-guest-wait" class="page">
+    <div class="container center-content">
+      <div class="spinner"></div>
+      <p class="wait-text">已加入房间，等待房主开始游戏...</p>
+      <p id="guest-room-info" class="text-muted"></p>
+      <button id="btn-leave-wait" class="btn btn-secondary">离开</button>
+    </div>
+  </div>
+
+  <!-- ========== 游戏页面（房主 & 客人共用） ========== -->
+  <div id="page-game" class="page">
+    <div class="game-layout">
+      <div class="game-main">
+        <div id="grid-container" class="grid-container"></div>
+      </div>
+
+      <div class="game-sidebar">
+        <!-- 游戏信息 -->
+        <div class="game-info-bar">
+          <div class="info-item">
+            <span class="info-label">已揭示</span>
+            <span id="stat-revealed" class="info-value">0</span>
+            <span class="info-label"> / </span>
+            <span id="stat-total" class="info-value">16</span>
+          </div>
+        </div>
+
+        <!-- 玩家列表 & 回合 -->
+        <div id="player-queue" class="player-queue"></div>
+
+        <!-- 房主操作区（仅房主可见） -->
+        <div id="host-controls" class="panel hidden">
+          <div id="host-guess-display" class="guess-display hidden">
+            <span class="guess-label">猜测内容:</span>
+            <span id="host-guess-text" class="guess-text"></span>
+          </div>
+          <div id="host-judge-btns" class="judge-btns hidden">
+            <button id="btn-judge-correct" class="btn btn-success">正确</button>
+            <button id="btn-judge-wrong" class="btn btn-danger">错误</button>
+          </div>
+          <div class="host-bottom-actions">
+            <button id="btn-reveal-all" class="btn btn-secondary">揭示全部并结束</button>
+          </div>
+        </div>
+
+        <!-- 客人操作区（仅客人可见） -->
+        <div id="guest-controls" class="panel hidden">
+          <div id="guest-turn-step1" class="turn-step hidden">
+            <p class="turn-hint">选择一个格子翻转</p>
+          </div>
+          <div id="guest-turn-step2" class="turn-step hidden">
+            <p class="turn-hint">格子已翻转，输入你的猜测</p>
+            <div class="guess-row">
+              <input type="text" id="guest-guess-input" class="guess-input" placeholder="输入猜测..." maxlength="50">
+              <button id="btn-submit-guess" class="btn btn-primary btn-sm">提交</button>
+            </div>
+          </div>
+          <div id="guest-turn-waiting" class="turn-step">
+            <p class="turn-hint text-muted">等待其他玩家...</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== 回合结果弹窗 ========== -->
+  <div id="modal-round-end" class="modal hidden">
+    <div class="modal-content">
+      <h2 id="round-end-title">本局结束</h2>
+      <div id="round-end-image" class="result-image"></div>
+      <div id="round-end-answer" class="answer-reveal"></div>
+      <div id="round-end-scores" class="score-list"></div>
+      <div class="result-actions">
+        <button id="btn-next-round" class="btn btn-primary hidden">下一局</button>
+        <button id="btn-round-end-home" class="btn btn-secondary">回到首页</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== 单人模式页面 ========== -->
+  <div id="page-solo" class="page">
+    <div class="container">
+      <h2 class="page-title">单人练习</h2>
+
+      <div class="upload-area" id="solo-upload-area">
+        <input type="file" id="solo-file-input" accept="image/*" hidden>
+        <div class="upload-placeholder">
+          <div class="upload-icon">+</div>
+          <p>点击上传图片</p>
+        </div>
+        <img id="solo-preview-img" class="preview-img" hidden>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">网格大小：<span id="solo-grid-display">4 × 4</span></label>
+        <input type="range" id="solo-grid-size" min="2" max="10" value="4" class="slider">
+      </div>
+
+      <button id="btn-solo-start" class="btn btn-primary" disabled>开始</button>
+      <button id="btn-solo-demo" class="btn btn-secondary">使用示例图片</button>
+      <button id="btn-solo-back" class="btn btn-secondary">返回</button>
+    </div>
+  </div>
+
+  <!-- ========== 单人游戏页面 ========== -->
+  <div id="page-solo-game" class="page">
+    <div class="game-layout">
+      <div class="game-main">
+        <div id="solo-grid-container" class="grid-container"></div>
+      </div>
+      <div class="game-sidebar">
+        <div class="stats">
+          <div class="stat-item">
+            <span class="stat-label">已翻格子</span>
+            <span id="solo-stat-revealed" class="stat-value">0</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">总格子数</span>
+            <span id="solo-stat-total" class="stat-value">16</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">当前得分</span>
+            <span id="solo-stat-score" class="stat-value">160</span>
+          </div>
+        </div>
+        <div class="guess-section">
+          <input type="text" id="solo-guess-input" class="guess-input" placeholder="输入你的猜测...">
+          <button id="solo-btn-guess" class="btn btn-primary">确认猜测</button>
+        </div>
+        <div class="game-actions">
+          <button id="solo-btn-reset" class="btn btn-secondary">重新遮盖</button>
+          <button id="solo-btn-back" class="btn btn-secondary">返回首页</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <script src="js/network.js"></script>
+  <script src="js/game.js"></script>
+  <script src="js/host.js"></script>
+  <script src="js/guest.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
