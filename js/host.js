@@ -48,6 +48,9 @@
     this.network.onError = function (err) {
       alert('连接错误: ' + err.message);
     };
+
+    // 实际启动 Peer 连接
+    this.network.host();
   };
 
   // ========== 玩家管理 ==========
