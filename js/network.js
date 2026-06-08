@@ -52,27 +52,32 @@
     var self = this;
     this.role = 'host';
 
-    console.log('[Network] Starting host, checking PeerJS availability...');
+    if (window.dbg) dbg('[Network] host() called');
+    else console.log('[Network] host() called');
+
     if (typeof Peer === 'undefined') {
-      console.error('[Network] Peer is undefined! PeerJS library not loaded.');
+      if (window.dbg) dbg('[Network] ERROR: Peer is undefined');
       if (self.onError) self.onError(new Error('PeerJS 库未加载'));
       return;
     }
-    console.log('[Network] Peer is available:', typeof Peer);
 
     // 生成6位短ID
     var shortId = generateShortId();
     var fullId = 'gridgame-' + shortId;
-    console.log('[Network] Creating peer with id:', fullId);
+    if (window.dbg) dbg('[Network] Creating Peer:', fullId);
 
-    this.peer = new Peer(fullId, {
-      debug: 2
-    });
+    try {
+      this.peer = new Peer(fullId, { debug: 2 });
+    } catch (e) {
+      if (window.dbg) dbg('[Network] Peer constructor threw:', e.message);
+      if (self.onError) self.onError(e);
+      return;
+    }
 
-    console.log('[Network] Peer created, waiting for open event...');
+    if (window.dbg) dbg('[Network] Peer created, awaiting open event');
 
     this.peer.on('open', function (id) {
-      console.log('[Network] OPEN event fired, id:', id);
+      if (window.dbg) dbg('[Network] OPEN event:', id);
       if (self.onHostOpen) self.onHostOpen(id);
     });
 
@@ -98,9 +103,8 @@
     });
 
     this.peer.on('error', function (err) {
-      console.error('[Network] host error:', err.type, err.message || err);
+      if (window.dbg) dbg('[Network] ERROR:', err.type, err.message || err);
       if (err.type === 'unavailable-id') {
-        // ID 冲突，重试
         self.destroy();
         self.host();
         return;
@@ -109,11 +113,11 @@
     });
 
     this.peer.on('disconnected', function () {
-      console.warn('[Network] host disconnected from signaling server');
+      if (window.dbg) dbg('[Network] disconnected from signaling server');
     });
 
     this.peer.on('close', function () {
-      console.log('[Network] host peer closed');
+      if (window.dbg) dbg('[Network] peer closed');
     });
   };
 
