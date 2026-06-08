@@ -18,7 +18,7 @@
   };
 
   // 在脚本加载时立即打印（验证代码已更新）
-  dbg('app.js loaded, version: v5-diag');
+  dbg('app.js loaded, version: v8-fix');
 
   var hostCtrl = null;
   var guestCtrl = null;
